@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList; 
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -42,10 +42,14 @@ import javafx.geometry.Insets;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.paint.Color;
-//import javafx.scene.control.TableView;
-//import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.cell.PropertyValueFactory;
 import java.sql.*;
-//import javafx.scene.layout.GridPane;
+import java.util.stream.IntStream;
+import javafx.scene.layout.StackPane;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.chart.*;
 
 public class BasicView extends View {
 //Chapter array
@@ -178,8 +182,10 @@ public class BasicView extends View {
         cbo3.setValue("Questions: ");
         
         cbo.setOnAction(e -> appPane.getSections(items.indexOf(cbo.getValue())));
-        cbo2.setOnAction(e -> appPane.getQuestions(items.indexOf(cbo.getValue()),
-               items2.indexOf(cbo2.getValue())));
+        cbo2.setOnAction(e -> {
+            appPane.getQuestions(items.indexOf(cbo.getValue()),
+               items2.indexOf(cbo2.getValue()));
+        });
         
         button.setOnAction(e -> {
             if ((cbo.getValue() == "Chapters: ")||(cbo2.getValue() == "Sections: ")
@@ -200,7 +206,7 @@ public class BasicView extends View {
         
         repBtn.setOnAction(e-> {
            //go to user report
-            appPane.displayUserReport("all"); 
+            appPane.displayUserReport("all", 0, 0); 
         });
         
         HBox topPane = new HBox(backBtn, repBtn);
@@ -217,8 +223,8 @@ public class BasicView extends View {
     }
     class AppPane extends BorderPane {
         //address will need to be changed to location of the files
-        //String address = "C:\\Users\\Christian\\Desktop\\mcquestions\\";
-        String address = "C:\\Users\\Pavi\\Downloads\\mcquestions\\";
+        // String address = "C:\\Users\\Christian\\Desktop\\mcquestions\\";
+		String address = "C:\\Users\\Pavi\\Downloads\\mcquestions\\";
         private Connection connection = null;
         
         AppPane() {
@@ -231,8 +237,7 @@ public class BasicView extends View {
             try {
                 Class.forName("com.mysql.jdbc.Driver");
                 connection = DriverManager.getConnection(
-                    "jdbc:mysql://localhost/user", "scott", "tiger");
-                System.out.println("Driver loaded.");
+                    "jdbc:mysql://liang.armstrong.edu:3306/team7" , "team7", "tiger");
                 
                 String command = "SELECT * FROM UserQuizSummary WHERE userName = '" + 
                         name + "' AND password = '" + pw + "'";
@@ -279,8 +284,7 @@ public class BasicView extends View {
             try {
                 Class.forName("com.mysql.jdbc.Driver");
                 connection = DriverManager.getConnection(
-                    "jdbc:mysql://localhost/user", "scott", "tiger");
-                System.out.println("Driver loaded.");
+                    "jdbc:mysql://liang.armstrong.edu:3306/team7" , "team7", "tiger");
                 
                 String command = "SELECT * FROM UserQuizSummary WHERE userName = '" + 
                         name + "'";
@@ -327,36 +331,443 @@ public class BasicView extends View {
             }
         }
         
-        public void displayUserReport(String status) {
+        public void displayUserReport(String status, int chapt, int sect) {
             //displays user report
-            /*
+            ObservableList<TableRow> data;
             ResultSet rs = null;
+            ArrayList<TableRow> rList = new ArrayList<TableRow>();
             try {
-                items2.clear();
-                items3.clear();
-                cbo2.getItems().clear();
-                cbo3.getItems().clear();
+                
                 qArr.clear();
                 this.getChildren().clear();
                 HBox backPane = new HBox(); //pane for back button
                 backPane.setPadding(new Insets(5, 0, 3, 0));
                 Button backBtn = new Button("Back to Selection Menu");
-                backPane.getChildren().add(backBtn);
-                this.setTop(backPane);
                 
                 Class.forName("com.mysql.jdbc.Driver");
                 connection = DriverManager.getConnection(
-                    "jdbc:mysql://localhost/user", "scott", "tiger");
-                System.out.println("Driver loaded.");
+                    "jdbc:mysql://liang.armstrong.edu:3306/team7" , "team7", "tiger");
                 
-                //TableView table = new TableView();
-                //table.setEditable(false);
+                TableView<TableRow> table = new TableView<TableRow>();
+                table.setEditable(false);
+                //User Overview
                 if (status == "all") {
-                    //TableColumn chaptCol = new TableColumn("Chapter");
-                    //TableColumn questCol = new TableColumn("Total Answered Questions");
-                    //TableColumn tryCol = new TableColumn("Total Answer Attempts");
-                    //TableColumn validCol = new TableColumn("Total Correct Attempts");
+                    VBox centerPane = new VBox();
+                    HBox hPane = new HBox();
+                    hPane.setAlignment(Pos.CENTER);
+                    ComboBox repCB = new ComboBox();
+                    repCB.setPrefWidth(250);
+                    repCB.getItems().addAll(items);
+                    repCB.setValue("Chapters: ");
+                    hPane.getChildren().add(repCB);
+                    VBox topPane = new VBox();
+                    topPane.getChildren().addAll(backBtn, hPane);
+                    topPane.setSpacing(5);
+                    //goes to Chapter Overview
+                    repCB.setOnAction(e -> {
+                        getSections(items.indexOf(repCB.getValue()));
+                        displayUserReport("chapt", items.indexOf(repCB.getValue()), 0);
+                    });
                     
+                    
+                    
+                    TableColumn chaptCol = new TableColumn("Chapter");
+                    chaptCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("firstCol"));
+                    wrapTableHeader(chaptCol);
+                    chaptCol.setMaxWidth(75);
+                    chaptCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn questCol = new TableColumn("Number of Answered Questions");
+                    questCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("secondCol"));
+                    wrapTableHeader(questCol);
+                    questCol.setMaxWidth(80);
+                    questCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn tryCol = new TableColumn("Number of Answer Attempts");
+                    tryCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("thirdCol"));
+                    wrapTableHeader(tryCol);
+                    tryCol.setMaxWidth(80);
+                    tryCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn validCol = new TableColumn("Number of Correct Attempts");
+                    validCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("fourthCol"));
+                    wrapTableHeader(validCol);
+                    validCol.setMaxWidth(80);
+                    validCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    int uq = 0; //total unanswered questions
+                    int taq = 0; //total answered questions
+                    int tc = 0; //total questions correct
+                    
+                    for (int c = 1; c < 45; c++) {
+                        int aq = 0; //answered questions
+                        int aa = 0; //answer attempts
+                        int ca = 0; //correct attempts
+                        String ch = ""; //chapter
+                        
+                        if (c < 10) {
+                            ch = "0" + Integer.toString(c);
+                        }
+                        else {
+                            ch = Integer.toString(c);
+                        }
+                        
+                        String command = "SELECT qID, isValid FROM "
+                                + "UserQuizSummary WHERE userName = '" + userName
+                                + "' AND qID LIKE '" + ch + "%'";
+                        Statement statement = connection.createStatement();
+                        rs = statement.executeQuery(command);
+                        if (rs.absolute(1)) {
+                            ArrayList<Integer> questList = new ArrayList<Integer>();
+                            do {
+                                
+                                //add Question from qID to questList
+                                String temp = "" + rs.getObject(1);
+                                
+                                questList.add(Integer.parseInt(temp.substring(6)));
+                                //increase total answer attempts
+                                aa++;
+                                //if isValid == 'true', increase total correct attempts
+                                String val = "" + rs.getObject(2);
+                                if (val.equals("true")) {
+                                    ca++;
+                                }
+                                
+                            } while (rs.next());
+                            //convert questList to int array of all unique questions
+                            int[] n = IntStream.of(
+                                    questList.stream().mapToInt(i -> i).toArray())
+                                    .distinct().toArray();
+                            
+                            rList.add(new TableRow(Integer.toString(c), 
+                                    Integer.toString(n.length), Integer.toString(aa),
+                                    Integer.toString(ca)));
+                            taq += n.length;
+                            uq = 1298 - taq;
+                            questList.clear();
+                            rs.beforeFirst(); //reset resultset
+                            if (rs.absolute(1)) {
+                                do {
+                                    int temp = Integer.parseInt(("" + rs.getObject(1)).substring(6));
+                                    String val = "" + rs.getObject(2);
+                                    
+                                    if ((!questList.contains(temp)) && 
+                                            (val.equals("true"))) {
+                                        questList.add(temp);
+                                    }
+                                } while (rs.next());
+                                tc += questList.size();
+                            }
+                        }
+                    }
+                    ObservableList<PieChart.Data> pieChartList = 
+                            FXCollections.observableArrayList(
+                            new PieChart.Data("Unanswered Questions", uq),
+                            new PieChart.Data("Questions Not Answered Correctly", 
+                                    (taq-tc)),
+                            new PieChart.Data("Questions Answered Correctly", tc));
+                    
+                    PieChart pieChart = new PieChart(pieChartList);
+                    pieChart.setTitle("User Overview");
+                    
+                    data = FXCollections.observableArrayList(rList);
+                    
+                    table.setItems(data);
+                    table.getColumns().addAll(chaptCol, questCol, tryCol, validCol);
+                    table.setMaxHeight(150);
+                    centerPane.getChildren().add(pieChart);
+                    this.setTop(topPane);
+                    this.setCenter(centerPane);
+                    this.setBottom(table);
+                }
+                else if (status == "chapt") {
+                    VBox centerPane = new VBox();
+                    HBox selectPane = new HBox();
+                    selectPane.setSpacing(10);
+                    selectPane.setAlignment(Pos.CENTER);
+                    selectPane.setPadding(new Insets(3, 3, 3, 3));
+                    VBox topPane = new VBox();
+                    
+                    ComboBox repCB = new ComboBox();
+                    repCB.setPrefWidth(150);
+                    repCB.getItems().addAll(items2);
+                    repCB.setValue("Sections: ");
+                    
+                    Button allBtn = new Button("Back to Overview");
+                    
+                    allBtn.setOnAction(e -> {
+                       items2.clear();
+                       displayUserReport("all", 0, 0);
+                    });
+                    
+                    
+                    selectPane.getChildren().addAll(allBtn, repCB);
+                    topPane.getChildren().addAll(backBtn, selectPane);
+                    
+                    
+                    repCB.setOnAction(e -> {
+                        getQuestions(chapt, items2.indexOf(repCB.getValue()));
+                        displayUserReport("sect", chapt, (items2.indexOf(repCB.getValue())));
+                    });
+                    
+                    
+                    
+                    TableColumn sectCol = new TableColumn("Section");
+                    sectCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("firstCol"));
+                    wrapTableHeader(sectCol);
+                    sectCol.setMaxWidth(75);
+                    sectCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn questCol = new TableColumn("Number of Answered Questions");
+                    questCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("secondCol"));
+                    wrapTableHeader(questCol);
+                    questCol.setMaxWidth(80);
+                    questCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn tryCol = new TableColumn("Number of Answer Attempts");
+                    tryCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("thirdCol"));
+                    wrapTableHeader(tryCol);
+                    tryCol.setMaxWidth(80);
+                    tryCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn validCol = new TableColumn("Number of Correct Attempts");
+                    validCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("fourthCol"));
+                    wrapTableHeader(validCol);
+                    validCol.setMaxWidth(80);
+                    validCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    int uq = 0; //total unanswered questions
+                    int taq = 0; //total answered questions
+                    int tc = 0; //total questions correct
+                    
+                    for (int c = 1; c <= items2.size(); c++) {
+                        int aq = 0; //answered questions
+                        int aa = 0; //answer attempts
+                        int ca = 0; //correct attempts
+                        String sn = ""; //section
+                        String ch = ""; //chapter
+                        
+                        if (chapt < 9) {
+                            ch = "0" + Integer.toString(chapt+1) + ".";
+                        }
+                        else {
+                            ch = Integer.toString(chapt+1) + ".";
+                        }
+                        if (c < 10) {
+                            sn = "0" + Integer.toString(c+1);
+                        }
+                        else {
+                            sn = Integer.toString(c+1);
+                        }
+                        
+                        String command = "SELECT qID, isValid FROM "
+                                + "UserQuizSummary WHERE userName = '" + userName
+                                + "' AND qID LIKE '" + ch + sn + "%'";
+                        
+                        Statement statement = connection.createStatement();
+                        rs = statement.executeQuery(command);
+                        if (rs.absolute(1)) {
+                            ArrayList<Integer> questList = new ArrayList<Integer>();
+                            do {
+                                
+                                //add Question from qID to questList
+                                String temp = "" + rs.getObject(1);
+                                
+                                questList.add(Integer.parseInt(temp.substring(6)));
+                                //increase total answer attempts
+                                aa++;
+                                //if isValid == 'true', increase total correct attempts
+                                String val = "" + rs.getObject(2);
+                                if (val.equals("true")) {
+                                    ca++;
+                                }
+                                
+                            } while (rs.next());
+                            //convert questList to int array of all unique questions
+                            int[] n = IntStream.of(
+                                    questList.stream().mapToInt(i -> i).toArray())
+                                    .distinct().toArray();
+                            
+                            rList.add(new TableRow(items2.get(c-1), 
+                                    Integer.toString(n.length), Integer.toString(aa),
+                                    Integer.toString(ca)));
+                            taq += n.length;
+                            
+                            questList.clear();
+                            rs.beforeFirst(); //reset resultset
+                            if (rs.absolute(1)) {
+                                do {
+                                    int temp = Integer.parseInt(("" + rs.getObject(1)).substring(6));
+                                    String val = "" + rs.getObject(2);
+                                    
+                                    if ((!questList.contains(temp)) && 
+                                            (val.equals("true"))) {
+                                        questList.add(temp);
+                                    }
+                                } while (rs.next());
+                                tc += questList.size();
+                            }
+                        }
+                        
+                    }
+                    
+                    uq = numQuests(chapt) - taq;
+                    
+                    ObservableList<PieChart.Data> pieChartList = 
+                            FXCollections.observableArrayList(
+                            new PieChart.Data("Unanswered Questions", uq),
+                            new PieChart.Data("Questions Not Answered Correctly", 
+                                    (taq-tc)),
+                            new PieChart.Data("Questions Answered Correctly", tc));
+                    
+                    PieChart pieChart = new PieChart(pieChartList);
+                    pieChart.setTitle("Chapter " + (chapt+1) + " Overview");
+                    
+                    
+                    
+                    data = FXCollections.observableArrayList(rList);
+                    
+                    table.setItems(data);
+                    table.getColumns().addAll(sectCol, questCol, tryCol, validCol);
+                    table.setMaxHeight(150);
+                    backPane.getChildren().add(topPane);
+                    centerPane.getChildren().add(pieChart);
+                    this.setTop(topPane);
+                    this.setCenter(centerPane);
+                    this.setBottom(table);
+                }
+                else if (status == "sect") {
+                    VBox centerPane = new VBox();
+                    centerPane.setSpacing(10);
+                    VBox selectPane = new VBox();
+                    selectPane.setSpacing(5);
+                    selectPane.setAlignment(Pos.CENTER_LEFT);
+                    
+                    Button chBtn = new Button("Back to Chapter");
+                    
+                    chBtn.setOnAction(e -> {
+                       items3.clear();
+                       displayUserReport("chapt", chapt, 0);
+                    });
+                    
+                    selectPane.getChildren().addAll(backBtn, chBtn);
+                    backPane.getChildren().add(selectPane);
+                    this.setTop(backPane);
+                    
+                    
+                    TableColumn questCol = new TableColumn("Question");
+                    questCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("firstCol"));
+                    wrapTableHeader(questCol);
+                    questCol.setMaxWidth(100);
+                    questCol.setMinWidth(80);
+                    questCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn tryCol = new TableColumn("Answer Attempts");
+                    tryCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("secondCol"));
+                    wrapTableHeader(tryCol);
+                    tryCol.setMaxWidth(105);
+                    tryCol.setMinWidth(80);
+                    tryCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    TableColumn validCol = new TableColumn("Correct Attempts");
+                    validCol.setCellValueFactory(
+                            new PropertyValueFactory<TableRow, String>("thirdCol"));
+                    wrapTableHeader(validCol);
+                    validCol.setMaxWidth(105);
+                    validCol.setMinWidth(80);
+                    validCol.setStyle("-fx-alignment: CENTER;");
+                    
+                    int uq = 0; //total unanswered questions
+                    int taq = items3.size(); //total answered questions
+                    int tc = 0; //total questions correct
+                    
+                    for (int c = 1; c <= items3.size(); c++) {
+                        int aa = 0; //answer attempts
+                        int ca = 0; //correct attempts
+                        String sn = ""; //section
+                        String ch = ""; //chapter
+                        String qs = ""; //question
+                        
+                        if (chapt < 9) {
+                            ch = "0" + Integer.toString(chapt+1) + ".";
+                        }
+                        else {
+                            ch = Integer.toString(chapt+1) + ".";
+                        }
+                        
+                        if (sect < 9) {
+                            sn = "0" + Integer.toString(sect+2) + ".";
+                        }
+                        else {
+                            sn = Integer.toString(sect+2) + ".";
+                        }
+                        int n = Integer.parseInt(items3.get(c-1));
+                        if (n < 10) {
+                            qs = "0" + Integer.toString(n);
+                        }
+                        else {
+                            qs = Integer.toString(n);
+                        }
+                        
+                        String command = "SELECT qID, isValid FROM "
+                                + "UserQuizSummary WHERE userName = '" + userName
+                                + "' AND qID = '" + ch + sn + qs +"'";
+                        Statement statement = connection.createStatement();
+                        rs = statement.executeQuery(command);
+                        if (rs.absolute(1)) {
+                            do {
+                                
+                                //increase total answer attempts
+                                aa++;
+                                //if isValid == 'true', increase total correct attempts
+                                String val = "" + rs.getObject(2);
+                                if (val.equals("true")) {
+                                    ca++;
+                                }
+                            } while (rs.next());
+                            
+                            rList.add(new TableRow(Integer.toString(n), 
+                                    Integer.toString(aa),
+                                    Integer.toString(ca)));
+                            
+                            if (ca > 0) {
+                                tc++;
+                            }
+                        }
+                        else {
+                            uq++;
+                        }
+                    }
+                    
+                    ObservableList<PieChart.Data> pieChartList = 
+                            FXCollections.observableArrayList(
+                            new PieChart.Data("Unanswered Questions", uq),
+                            new PieChart.Data("Questions Not Answered Correctly", 
+                                    (taq-tc)),
+                            new PieChart.Data("Questions Answered Correctly", tc));
+                    
+                    PieChart pieChart = new PieChart(pieChartList);
+                    
+                    pieChart.setTitle("Section " + (items2.get(sect)) + " Overview");
+                    
+                    data = FXCollections.observableArrayList(rList);
+                    
+                    table.setItems(data);
+                    table.getColumns().addAll(questCol, tryCol, validCol);
+                    table.setMaxHeight(150);
+                    centerPane.getChildren().add(pieChart);
+                    this.setCenter(centerPane);
+                    this.setBottom(table);
                     
                 }
                 
@@ -385,8 +796,26 @@ public class BasicView extends View {
                     }
                 }
             }
-            */
+            
         }
+        //allows table headers to wrap text
+        public void wrapTableHeader(TableColumn tc) {
+            Label lb = new Label(tc.getText());
+            lb.setAlignment(Pos.CENTER);
+            lb.setStyle("-fx-padding: 3px;");
+            lb.setTextAlignment(TextAlignment.CENTER);
+            lb.setMaxWidth(70);
+            lb.setWrapText(true);
+            
+            StackPane pane = new StackPane();
+            pane.getChildren().add(lb);
+            
+            pane.prefWidthProperty().bind(tc.widthProperty().subtract(3));
+            lb.prefWidthProperty().bind(pane.prefWidthProperty());
+            
+            tc.setGraphic(pane);
+        }
+        
         
         public void getSections(int index) {  
             cbo2.getItems().clear();
@@ -433,7 +862,6 @@ public class BasicView extends View {
                     //if someone can think of something better to put here for 
                     //the placeholder please don't hesitate to change it
                 }
-                
                 //put section numbers into cbo2
                 String[] n = new String[sArr.size()];
                 sArr.toArray(n);
@@ -471,7 +899,8 @@ public class BasicView extends View {
                 }
                 while ((currentLine = br.readLine()) != null) {
                     //if the line begins with Section or chapter has no sections...
-                    if (currentLine.matches("^(Section\\s.*)|(Sections\\s.*)")
+                    if (currentLine.matches(
+                            "^((Section\\s.*)|(Sections\\s.*)|(Section:.*))")
                             || noSect ) {
                         String p;
                         br.mark(1000); //marks current place in file
@@ -484,11 +913,12 @@ public class BasicView extends View {
                                 sInt++;
                             }
                             else {
-                                //save section name to s
-                                s = stg;
+                                //save section to s
                                 sInt++;
+                                s = (chapt+1) + "." + (sInt+2);
                             }
                         }
+                        
                         
                         br.reset(); //resets back to last mark
                         //gets questions from specified section
@@ -516,14 +946,14 @@ public class BasicView extends View {
                                     //accounts for multi-line answers
                                     String o;
                                     br.mark(1000); //marks current place in file
-                                    while (!(o = br.readLine()).matches("^((a\\.)|(b\\.)|(c\\.)|(d\\.)|(e\\.)|(f\\.)|(Key:)).*")) {
+                                    while (!(o = br.readLine()).matches("^((a\\.)|(b\\.)|(c\\.)|(d\\.)|(e\\.)|(f\\.)|(Key:)|(key:)).*")) {
                                         currentLine += ("\n" + "   " + o);
                                     }
                                     br.reset(); //resets back to last mark
                                     opts.add(currentLine.trim());
                                 } //if line begins with Key:...
-                                else if (currentLine.matches("^(Key:).*")) {
-                                    String str = currentLine.replaceAll("(Key:)", "");
+                                else if (currentLine.matches("^(((Key:)|(key:)).*)")) {
+                                    String str = currentLine.replaceAll("(Key:)|(key:)", "");
                                     str.trim();
                                     if (str.length() > 5) {
                                         //saves key to k and hint to h
@@ -596,7 +1026,7 @@ public class BasicView extends View {
             quest.setWrapText(true);
             ScrollPane questPane = new ScrollPane(); //pane for question
             questPane.setPadding(new Insets(3, 5, 3, 5));
-            questPane.setMaxHeight(375);
+            questPane.setMaxHeight(275);
             questPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
             VBox qv = new VBox(quest);
             questPane.setContent(qv);
@@ -707,6 +1137,10 @@ public class BasicView extends View {
                     //holds just the section number
                     String temp = qArr.get(num).getSection().substring(
                                 qArr.get(num).getSection().indexOf('.')+1);
+                    if (temp.contains("-")) {
+                        String str = temp.substring(0, temp.indexOf("-"));
+                        temp = str;
+                    }
                     //if section number is less than 10, adds 0 in front of it
                     if (temp.length() < 2) {
                         qid += "0" + temp;
@@ -715,11 +1149,13 @@ public class BasicView extends View {
                         qid += temp;
                     }
                     //if question number is less than 10, adds zero in front of it
-                    if (num < 9){
-                        qid += ".0" + Integer.toString(num+1);
+                    int n = Integer.parseInt(qArr.get(num).getAsk().substring(0, 
+                            qArr.get(num).getAsk().indexOf(".")));
+                    if (n < 9){
+                        qid += ".0" + Integer.toString(n);
                     }
                     else {
-                        qid += "." + Integer.toString(num+1);
+                        qid += "." + Integer.toString(n);
                     }
                     
                     //for single answer keys
@@ -791,13 +1227,13 @@ public class BasicView extends View {
             this.setBottom(btnPane);
             
         }
-        
+        //updates DB for submitted answers
         public void updateDB(String qid, int num, String valid) {
             ResultSet rs = null;
             try {
                 Class.forName("com.mysql.jdbc.Driver");
                 connection = DriverManager.getConnection(
-                        "jdbc:mysql://localhost/user", "scott", "tiger");
+                        "jdbc:mysql://liang.armstrong.edu:3306/team7" , "team7", "tiger");
 
                 //gets maximum trial number for this question for user
                 String command = "SELECT trial FROM UserQuizSummary"
@@ -853,6 +1289,28 @@ public class BasicView extends View {
                 }
             }
         }
+        //obtains number of questions in a chapter
+        public int numQuests(int chapt) {
+            try {
+                String ch = "chapter" + Integer.toString(chapt+1) + ".txt";
+                BufferedReader br = new BufferedReader(new FileReader(address + ch));
+                String currentLine;
+                
+                int num = 1;
+                
+                while ((currentLine = br.readLine()) != null) {
+                    if (currentLine.matches("(\\#).*")) {
+                        num++;
+                    }
+                }
+                br.close();
+                return num;
+            }
+            catch (Exception ex) {
+                ex.printStackTrace();
+                return 0;
+            }
+        }
         
     }
     
@@ -901,5 +1359,51 @@ public class BasicView extends View {
         public String getHint() {
             return hint;
         }
-    }   
+    }
+    //for creation of TableView in user report
+    public static class TableRow {
+        private String firstCol;
+        private String secondCol;
+        private String thirdCol;
+        private String fourthCol;
+        
+        private TableRow(String one, String two, String three) {
+            this.firstCol = one;
+            this.secondCol = two;
+            this.thirdCol = three;
+            this.fourthCol = "";
+        }
+        
+        private TableRow(String one, String two, String three, String four) {
+            this.firstCol = one;
+            this.secondCol = two;
+            this.thirdCol = three;
+            this.fourthCol = four;
+        }
+        //getters and setters
+        public String getFirstCol() {
+            return firstCol;
+        }
+        public void setFirstCol(String s) {
+            firstCol = s;
+        }
+        public String getSecondCol() {
+            return secondCol;
+        }
+        public void setSecondCol(String s) {
+            secondCol = s;
+        }
+        public String getThirdCol() {
+            return thirdCol;
+        }
+        public void setThirdCol(String s) {
+            thirdCol = s;
+        }
+        public String getFourthCol() {
+            return fourthCol;
+        }
+        public void setFourthCol(String s) {
+            fourthCol = s;
+        }
+    }
 }
